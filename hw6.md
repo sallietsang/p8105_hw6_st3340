@@ -133,3 +133,92 @@ birthweight_df %>%
 ```
 
 ![](hw6_files/figure-gfm/unnamed-chunk-4-2.png)<!-- -->
+
+## Comparison in terms of the cross-validated prediction error
+
+``` r
+#crossv_mc preforms the training / testing split multiple times
+cv_df = 
+  crossv_mc(birthweight_df, 100) 
+
+#double check for no repetitive..
+cv_df %>% pull(train) %>% .[[1]] %>% as_tibble
+```
+
+    ## # A tibble: 3,473 × 20
+    ##    babysex bhead blength   bwt delwt fincome dad_race gaweeks malform menarche
+    ##    <fct>   <dbl>   <dbl> <dbl> <dbl>   <dbl> <fct>      <dbl> <fct>      <dbl>
+    ##  1 female     34      51  3629   177      35 white       39.9 absent        13
+    ##  2 male       34      48  3062   156      65 black       25.9 absent        14
+    ##  3 female     36      50  3345   148      85 white       39.9 absent        12
+    ##  4 male       34      52  3062   157      55 white       40   absent        14
+    ##  5 female     34      52  3374   156       5 white       41.6 absent        13
+    ##  6 male       33      52  3374   129      55 white       40.7 absent        12
+    ##  7 female     33      49  2778   140       5 white       37.4 absent        12
+    ##  8 male       36      52  3515   146      85 white       40.3 absent        11
+    ##  9 male       33      50  3459   169      75 black       40.7 absent        12
+    ## 10 male       35      51  3459   146      55 white       39.4 absent        12
+    ## # … with 3,463 more rows, and 10 more variables: mheight <dbl>, momage <dbl>,
+    ## #   mom_race <fct>, parity <dbl>, pnumlbw <dbl>, pnumsga <dbl>, ppbmi <dbl>,
+    ## #   ppwt <dbl>, smoken <dbl>, wtgain <dbl>
+
+``` r
+cv_df %>% pull(test) %>% .[[1]] %>% as_tibble
+```
+
+    ## # A tibble: 869 × 20
+    ##    babysex bhead blength   bwt delwt fincome dad_race gaweeks malform menarche
+    ##    <fct>   <dbl>   <dbl> <dbl> <dbl>   <dbl> <fct>      <dbl> <fct>      <dbl>
+    ##  1 female     33      46  2523   126      96 black       40.3 absent        14
+    ##  2 female     35      51  3317   130      55 white       43.4 absent        13
+    ##  3 male       36      53  3629   147      75 white       41.3 absent        11
+    ##  4 female     33      49  2551   120      75 black       38.1 absent        11
+    ##  5 female     35      52  3289   135      55 white       40.6 absent        13
+    ##  6 male       36      54  3402   161      95 white       40.1 absent        11
+    ##  7 female     35      51  3827   130      45 white       41.3 absent        12
+    ##  8 male       38      53  3799   167      75 white       39.9 absent        12
+    ##  9 male       35      53  3175   130      45 white       40.4 absent        13
+    ## 10 female     35      53  3600   141      35 white       42.3 absent        14
+    ## # … with 859 more rows, and 10 more variables: mheight <dbl>, momage <dbl>,
+    ## #   mom_race <fct>, parity <dbl>, pnumlbw <dbl>, pnumsga <dbl>, ppbmi <dbl>,
+    ## #   ppwt <dbl>, smoken <dbl>, wtgain <dbl>
+
+``` r
+#turn the results of training and testing into tibble
+cv_df =
+  cv_df %>% 
+  mutate(
+    train = map(train, as_tibble),
+    test = map(test, as_tibble))
+
+cv_df = 
+  cv_df %>% 
+  mutate(fit =map(train, ~lm(bwt ~ blength +bhead + delwt+ babysex +fincome +gaweeks +momage +ppbmi +smoken ,data = .)),
+         fit_2 =map(train, ~lm(bwt ~  blength +gaweeks, data = .)),
+         fit_3 = map(train,~lm(bwt ~ babysex + bhead + blength + babysex* bhead + babysex*blength + blength*bhead + babysex*bhead*blength, data = .)))%>% 
+  mutate(
+    rmse_fit = map2_dbl(fit, test, ~rmse(model = .x, data = .y)),
+    rmse_fit_2 = map2_dbl(fit_2, test, ~rmse(model = .x, data = .y)),
+    rmse_fit_3= map2_dbl(fit_3, test, ~rmse(model = .x, data = .y)))
+```
+
+The plot below shows the distribution of RMSE values for each candidate
+model.
+
+``` r
+cv_df %>% 
+  select(starts_with("rmse")) %>% 
+  pivot_longer(
+    everything(),
+    names_to = "model", 
+    values_to = "rmse",
+    names_prefix = "rmse_") %>% 
+  mutate(model = fct_inorder(model)) %>% 
+  ggplot(aes(x = model, y = rmse)) + geom_violin()
+```
+
+![](hw6_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+
+It can be seen that my model(fit) has the least rmse, suggesting that it
+maybe the best prediction model when compared to the two other
+models(fit_2, fit_3)

@@ -95,8 +95,48 @@ birthweight_df %>%
         title = "scatterplots of residuals against fitted values of fit_3")
 ```
 
+## Comparison in terms of the cross-validated prediction error
 
 ```{r}
+#crossv_mc preforms the training / testing split multiple times
+cv_df = 
+  crossv_mc(birthweight_df, 100) 
+
+#double check for no repetitive..
+cv_df %>% pull(train) %>% .[[1]] %>% as_tibble
+cv_df %>% pull(test) %>% .[[1]] %>% as_tibble
+
+#turn the results of training and testing into tibble
+cv_df =
+  cv_df %>% 
+  mutate(
+    train = map(train, as_tibble),
+    test = map(test, as_tibble))
+
+cv_df = 
+  cv_df %>% 
+  mutate(fit =map(train, ~lm(bwt ~ blength +bhead + delwt+ babysex +fincome +gaweeks +momage +ppbmi +smoken ,data = .)),
+         fit_2 =map(train, ~lm(bwt ~  blength +gaweeks, data = .)),
+         fit_3 = map(train,~lm(bwt ~ babysex + bhead + blength + babysex* bhead + babysex*blength + blength*bhead + babysex*bhead*blength, data = .)))%>% 
+  mutate(
+    rmse_fit = map2_dbl(fit, test, ~rmse(model = .x, data = .y)),
+    rmse_fit_2 = map2_dbl(fit_2, test, ~rmse(model = .x, data = .y)),
+    rmse_fit_3= map2_dbl(fit_3, test, ~rmse(model = .x, data = .y)))
 
 ```
 
+The plot below shows the distribution of RMSE values for each candidate model.
+```{r}
+cv_df %>% 
+  select(starts_with("rmse")) %>% 
+  pivot_longer(
+    everything(),
+    names_to = "model", 
+    values_to = "rmse",
+    names_prefix = "rmse_") %>% 
+  mutate(model = fct_inorder(model)) %>% 
+  ggplot(aes(x = model, y = rmse)) + geom_violin()
+
+```
+
+It can be seen that my model(fit) has the least rmse, suggesting that it maybe the best prediction model when compared to the two other models(fit_2, fit_3)
