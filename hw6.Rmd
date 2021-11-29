@@ -113,16 +113,16 @@ cv_df =
     train = map(train, as_tibble),
     test = map(test, as_tibble))
 
-cv_df = 
-  cv_df %>% 
-  mutate(fit =map(train, ~lm(bwt ~ blength +bhead + delwt+ babysex +fincome +gaweeks +momage +ppbmi +smoken ,data = .)),
-         fit_2 =map(train, ~lm(bwt ~  blength +gaweeks, data = .)),
-         fit_3 = map(train,~lm(bwt ~ babysex + bhead + blength + babysex* bhead + babysex*blength + blength*bhead + babysex*bhead*blength, data = .)))%>% 
+cv_df = cv_df %>% 
+  mutate(
+    fit =map(train, ~lm(bwt ~ blength +bhead + delwt+ babysex +fincome +gaweeks +momage +ppbmi +smoken ,data = .)),
+    fit_2 =map(train, ~lm(bwt ~  blength +gaweeks, data = .)),
+    fit_3 = map(train,~lm(bwt ~ babysex + bhead + blength + babysex* bhead + babysex*blength + blength*bhead + babysex*bhead*blength, data = .)))%>% 
   mutate(
     rmse_fit = map2_dbl(fit, test, ~rmse(model = .x, data = .y)),
     rmse_fit_2 = map2_dbl(fit_2, test, ~rmse(model = .x, data = .y)),
     rmse_fit_3= map2_dbl(fit_3, test, ~rmse(model = .x, data = .y)))
-
+#P.S :it runs slowly
 ```
 
 The plot below shows the distribution of RMSE values for each candidate model.
@@ -135,8 +135,16 @@ cv_df %>%
     values_to = "rmse",
     names_prefix = "rmse_") %>% 
   mutate(model = fct_inorder(model)) %>% 
-  ggplot(aes(x = model, y = rmse)) + geom_violin()
+  ggplot(aes(x = model, y = rmse)) + geom_violin()+
+    labs( title = " distribution of RMSE values for the three models ")
 
 ```
 
 It can be seen that my model(fit) has the least rmse, suggesting that it maybe the best prediction model when compared to the two other models(fit_2, fit_3)
+
+
+#Problem 2 
+```{r}
+
+```
+
