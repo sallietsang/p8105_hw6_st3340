@@ -52,10 +52,10 @@ indicates that it is significant to the baby’s birthweight.For example,
 menarche ,mother’s age at menarche, is eliminated since it has a large
 p-value with 2.261406e-01  
 Therefore, based on the above selection rule, I selected the following
-variables with very small varibales: baby’s head circumference , baby’s
-length, mother’s weight,babysex, family monthly income, gestational
-age,mom’s age, mother’s pre-pregnancy BMI, average number of cigarettes
-smoked per day during pregnancy
+variables with very small varibales as predictors: baby’s head
+circumference , baby’s length, mother’s weight,babysex, family monthly
+income, gestational age,mom’s age, mother’s pre-pregnancy BMI, average
+number of cigarettes smoked per day during pregnancy
 
 ``` r
 #Model fitting
@@ -81,7 +81,9 @@ fit %>%
 | ppbmi         |   -14.059 |       0 |
 | smoken        |    -2.821 |       0 |
 
-Let’s do the diagnostics!
+Let’s do the diagnostics and show a plot of model residuals against
+fitted values – use add_predictions and add_residuals in making this
+plot.
 
 ``` r
 birthweight_df %>% 
@@ -90,9 +92,44 @@ birthweight_df %>%
   ggplot(aes(x = pred, y = resid)) + geom_point()+
    labs(x ="predicted baby’s birth weight (grams)", 
         y= "residuals", 
-        title = "scatterplots of prediction against residuals ")
+        title = "scatterplots of residuals against fitted values of fit_1")
 ```
 
 ![](hw6_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
 
-#Comparision to two other models
+#Comparision to two other models fit_2: One using length at birth and
+gestational age as predictors (main effects only) fit_3: One using head
+circumference, length, sex, and all interactions (including the
+three-way interaction) between these
+
+``` r
+#length at birth and gestational age as predictors
+fit_2 = lm(bwt ~  blength +gaweeks, data = birthweight_df)
+
+birthweight_df %>% 
+  modelr::add_residuals(fit_2) %>% 
+   modelr::add_predictions(fit_2) %>% 
+  ggplot(aes(x = pred, y = resid)) + geom_point()+
+   labs(x ="predicted baby’s birth weight (grams)", 
+        y= "residuals", 
+        title = "scatterplots of residuals against fitted values of fit_2")
+```
+
+![](hw6_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
+
+``` r
+ # head circumference, length, sex, and all interactions ,noticed that the interaction between predictors can be caclulated by using multiply
+# two way interaction includes:babysex* bhead , babysex*blength, blenght*bhead 
+#three way interaction : babysex*bhead*blength
+fit_3 = lm(bwt ~ babysex + bhead + blength + babysex* bhead + babysex*blength + blength*bhead + babysex*bhead*blength, data = birthweight_df)
+
+birthweight_df %>% 
+  modelr::add_residuals(fit_3) %>% 
+   modelr::add_predictions(fit_3) %>% 
+  ggplot(aes(x = pred, y = resid)) + geom_point()+
+   labs(x ="predicted baby’s birth weight (grams)", 
+        y= "residuals", 
+        title = "scatterplots of residuals against fitted values of fit_3")
+```
+
+![](hw6_files/figure-gfm/unnamed-chunk-4-2.png)<!-- -->
