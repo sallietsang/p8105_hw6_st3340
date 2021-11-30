@@ -144,7 +144,88 @@ It can be seen that my model(fit) has the least rmse, suggesting that it maybe t
 
 
 #Problem 2 
+Lets load the data first!
 ```{r}
-
+weather_df = 
+  rnoaa::meteo_pull_monitors(
+    c("USW00094728"),
+    var = c("PRCP", "TMIN", "TMAX"), 
+    date_min = "2017-01-01",
+    date_max = "2017-12-31") %>%
+  mutate(
+    name = recode(id, USW00094728 = "CentralPark_NY"),
+    tmin = tmin / 10,
+    tmax = tmax / 10) %>%
+  select(name, id, everything())
 ```
+##Boostraping by using modelr 
+```{r}
+#Boostrapping 
+bootstrap = weather_df %>% 
+  #rename the id to strap number 
+  bootstrap(5000, id="strap_number" ) %>% 
+  mutate(
+    models = map(.x = strap, ~lm(tmax~tmin, data = .x)), 
+    results_log = map(models, broom::tidy),
+    result_r2 = map(models,broom::glance)
+  ) %>% 
+  select(strap_number, results_log,result_r2) %>% 
+  unnest( results_log,result_r2)
+```
+## distribution plot and  95% confidence interval of r -squares
+```{r}
+#Look at the distributions of r squared under repeating sampling
+
+bootstrap %>% 
+  filter(term =="tmin") %>% 
+  ggplot(aes(x = r.squared))+
+    geom_density()+ 
+  labs(title = "distributions of r squared under 5000 bootstrap samples")
+
+#the 95% confidence interval of r squared
+cl_of_r2 = bootstrap  %>% 
+  summarize(
+    # 2.5% quantiles
+    ci_lower = quantile(r.squared, 0.025),
+    # 97.5% quantiles
+    ci_upper = quantile(r.squared, 0.975)
+  )
+```
+From the plot, it can be seen that after bootstraping the samples for 5000 times, the distribution of r-squares is slightly skewed. The upper and lower Cl for r-squares is 0.9272966	and 0.8945596	
+
+
+## distribution plot and 95% confidence interval of log(beta0*beta1)
+
+```{r}
+log_df = bootstrap %>% 
+  select(term, estimate)%>%
+  #beta 0 stands for the intercept 
+  mutate(term = recode( term,`(Intercept)` = "beta0", "tmin" ="beta1"))%>% 
+  pivot_wider(
+    names_from = "term",
+    values_from = "estimate") %>%
+  unnest(beta0,beta1) %>%
+  mutate(log = log(beta0*beta1))
+
+
+#Look at the distributions of log() under repeating sampling
+
+log_df%>% 
+  ggplot(aes(x = log)) +
+    geom_density()+
+  labs(title = "distributions of  log(beta0*beta1) squared under 5000 bootstrap samples")
+
+#the 95% confidence interval of log(beta0*beta1)
+cl_of_log = log_df  %>% 
+  summarize(
+    # 2.5% quantiles
+    ci_lower = quantile(log, 0.025),
+    # 97.5% quantiles
+    ci_upper = quantile(log, 0.975)
+  )
+```
+
+From the plot, it can be seen that after bootstraping the samples for 5000 times, the distribution of log(beta0*beta1) is slightly skewed. The upper and lower Cl for log(beta0*beta1) is 2.05773	and 1.966084	
+
+
 

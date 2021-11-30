@@ -149,15 +149,15 @@ cv_df %>% pull(train) %>% .[[1]] %>% as_tibble
     ##    babysex bhead blength   bwt delwt fincome dad_race gaweeks malform menarche
     ##    <fct>   <dbl>   <dbl> <dbl> <dbl>   <dbl> <fct>      <dbl> <fct>      <dbl>
     ##  1 female     34      51  3629   177      35 white       39.9 absent        13
-    ##  2 male       34      48  3062   156      65 black       25.9 absent        14
-    ##  3 female     36      50  3345   148      85 white       39.9 absent        12
-    ##  4 male       34      52  3062   157      55 white       40   absent        14
-    ##  5 female     34      52  3374   156       5 white       41.6 absent        13
-    ##  6 female     33      46  2523   126      96 black       40.3 absent        14
-    ##  7 female     33      49  2778   140       5 white       37.4 absent        12
-    ##  8 male       36      52  3515   146      85 white       40.3 absent        11
-    ##  9 male       33      50  3459   169      75 black       40.7 absent        12
-    ## 10 female     35      51  3317   130      55 white       43.4 absent        13
+    ##  2 male       34      52  3062   157      55 white       40   absent        14
+    ##  3 female     34      52  3374   156       5 white       41.6 absent        13
+    ##  4 male       33      52  3374   129      55 white       40.7 absent        12
+    ##  5 female     33      46  2523   126      96 black       40.3 absent        14
+    ##  6 male       36      52  3515   146      85 white       40.3 absent        11
+    ##  7 male       33      50  3459   169      75 black       40.7 absent        12
+    ##  8 male       35      51  3459   146      55 white       39.4 absent        12
+    ##  9 female     35      48  3175   158      75 white       39.7 absent        13
+    ## 10 male       36      53  3629   147      75 white       41.3 absent        11
     ## # … with 3,463 more rows, and 10 more variables: mheight <dbl>, momage <dbl>,
     ## #   mom_race <fct>, parity <dbl>, pnumlbw <dbl>, pnumsga <dbl>, ppbmi <dbl>,
     ## #   ppwt <dbl>, smoken <dbl>, wtgain <dbl>
@@ -169,16 +169,16 @@ cv_df %>% pull(test) %>% .[[1]] %>% as_tibble
     ## # A tibble: 869 × 20
     ##    babysex bhead blength   bwt delwt fincome dad_race gaweeks malform menarche
     ##    <fct>   <dbl>   <dbl> <dbl> <dbl>   <dbl> <fct>      <dbl> <fct>      <dbl>
-    ##  1 male       33      52  3374   129      55 white       40.7 absent        12
-    ##  2 female     36      52  3629   154      65 white       40.3 absent        11
-    ##  3 male       38      53  3799   167      75 white       39.9 absent        12
-    ##  4 female     34      54  3345   130      95 white       42.1 absent        10
-    ##  5 female     34      51  3232   155      55 white       41.6 absent        15
-    ##  6 female     34      51  3175   142      96 white       42.3 absent        17
-    ##  7 female     34      49  3317   142      35 white       40.4 absent        12
-    ##  8 female     34      49  3033   128      25 white       41.1 absent        12
-    ##  9 female     30      42  2013   150      65 black       37.7 absent        13
-    ## 10 male       34      52  3033   172      85 white       41.1 absent        16
+    ##  1 male       34      48  3062   156      65 black       25.9 absent        14
+    ##  2 female     36      50  3345   148      85 white       39.9 absent        12
+    ##  3 female     33      49  2778   140       5 white       37.4 absent        12
+    ##  4 female     35      51  3317   130      55 white       43.4 absent        13
+    ##  5 female     33      49  2551   120      75 black       38.1 absent        11
+    ##  6 female     35      57  3374   147      45 white       39.6 absent        12
+    ##  7 female     36      51  2977   135      45 white       41.7 absent        13
+    ##  8 female     33      49  2948   129      25 white       41   absent        13
+    ##  9 male       35      51  3345   145      75 white       41.3 absent        12
+    ## 10 male       35      52  3232   121      75 asian       42.3 absent        13
     ## # … with 859 more rows, and 10 more variables: mheight <dbl>, momage <dbl>,
     ## #   mom_race <fct>, parity <dbl>, pnumlbw <dbl>, pnumsga <dbl>, ppbmi <dbl>,
     ## #   ppwt <dbl>, smoken <dbl>, wtgain <dbl>
@@ -225,4 +225,124 @@ It can be seen that my model(fit) has the least rmse, suggesting that it
 maybe the best prediction model when compared to the two other
 models(fit_2, fit_3)
 
-#Problem 2
+#Problem 2 Lets load the data first!
+
+``` r
+weather_df = 
+  rnoaa::meteo_pull_monitors(
+    c("USW00094728"),
+    var = c("PRCP", "TMIN", "TMAX"), 
+    date_min = "2017-01-01",
+    date_max = "2017-12-31") %>%
+  mutate(
+    name = recode(id, USW00094728 = "CentralPark_NY"),
+    tmin = tmin / 10,
+    tmax = tmax / 10) %>%
+  select(name, id, everything())
+```
+
+    ## Registered S3 method overwritten by 'hoardr':
+    ##   method           from
+    ##   print.cache_info httr
+
+    ## using cached file: ~/Library/Caches/R/noaa_ghcnd/USW00094728.dly
+
+    ## date created (size, mb): 2021-11-19 15:08:27 (7.613)
+
+    ## file min/max dates: 1869-01-01 / 2021-11-30
+
+##Boostraping by using modelr
+
+``` r
+#Boostrapping 
+bootstrap = weather_df %>% 
+  #rename the id to strap number 
+  bootstrap(5000, id="strap_number" ) %>% 
+  mutate(
+    models = map(.x = strap, ~lm(tmax~tmin, data = .x)), 
+    results_log = map(models, broom::tidy),
+    result_r2 = map(models,broom::glance)
+  ) %>% 
+  select(strap_number, results_log,result_r2) %>% 
+  unnest( results_log,result_r2)
+```
+
+    ## Warning: unnest() has a new interface. See ?unnest for details.
+    ## Try `df %>% unnest(c(results_log, result_r2))`, with `mutate()` if needed
+
+## distribution plot and 95% confidence interval of r -squares
+
+``` r
+#Look at the distributions of r squared under repeating sampling
+
+bootstrap %>% 
+  filter(term =="tmin") %>% 
+  ggplot(aes(x = r.squared))+
+    geom_density()+ 
+  labs(title = "distributions of r squared under 5000 bootstrap samples")
+```
+
+![](hw6_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+
+``` r
+#the 95% confidence interval of r squared
+cl_of_r2 = bootstrap  %>% 
+  summarize(
+    # 2.5% quantiles
+    ci_lower = quantile(r.squared, 0.025),
+    # 97.5% quantiles
+    ci_upper = quantile(r.squared, 0.975)
+  )
+```
+
+From the plot, it can be seen that after bootstraping the samples for
+5000 times, the distribution of r-squares is slightly skewed. The upper
+and lower Cl for r-squares is 0.9272966 and 0.8945596
+
+## distribution plot and 95% confidence interval of log(beta0\*beta1)
+
+``` r
+log_df = bootstrap %>% 
+  select(term, estimate)%>%
+  #beta 0 stands for the intercept 
+  mutate(term = recode( term,`(Intercept)` = "beta0", "tmin" ="beta1"))%>% 
+  pivot_wider(
+    names_from = "term",
+    values_from = "estimate") %>%
+  unnest(beta0,beta1) %>%
+  mutate(log = log(beta0*beta1))
+```
+
+    ## Warning: Values are not uniquely identified; output will contain list-cols.
+    ## * Use `values_fn = list` to suppress this warning.
+    ## * Use `values_fn = length` to identify where the duplicates arise
+    ## * Use `values_fn = {summary_fun}` to summarise duplicates
+
+    ## Warning: unnest() has a new interface. See ?unnest for details.
+    ## Try `df %>% unnest(c(beta0, beta1))`, with `mutate()` if needed
+
+``` r
+#Look at the distributions of log() under repeating sampling
+
+log_df%>% 
+  ggplot(aes(x = log)) +
+    geom_density()+
+  labs(title = "distributions of  log(beta0*beta1) squared under 5000 bootstrap samples")
+```
+
+![](hw6_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
+
+``` r
+#the 95% confidence interval of log(beta0*beta1)
+cl_of_log = log_df  %>% 
+  summarize(
+    # 2.5% quantiles
+    ci_lower = quantile(log, 0.025),
+    # 97.5% quantiles
+    ci_upper = quantile(log, 0.975)
+  )
+```
+
+From the plot, it can be seen that after bootstraping the samples for
+5000 times, the distribution of log(beta0*beta1) is slightly skewed. The
+upper and lower Cl for log(beta0*beta1) is 2.05773 and 1.966084
